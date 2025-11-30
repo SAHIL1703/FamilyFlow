@@ -14,6 +14,7 @@ connectDB();
 
 // Import Routes
 const authRoutes = require("./routes/auth.js");
+const protect = require("./middleware/authMiddleware.js");
 // Later you will add:
 // const roomRoutes = require("./routes/roomRoutes");
 // const inviteRoutes = require("./routes/inviteRoutes");
@@ -54,8 +55,9 @@ app.use("/api/auth", authRoutes);
 // ----------------------
 // 🔥 Test Route
 // ----------------------
-app.get("/", (req, res) => {
+app.get("/",protect, (req, res) => {
     res.send("Family Tracker API is Running...");
+    console.dir(req)
 });
 
 
