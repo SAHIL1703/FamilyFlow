@@ -7,3 +7,5 @@ router.post('/create' , protect , createRoom);
 router.get('/my-rooms' , protect , getRooms);
 router.delete('/delete/:roomId' , protect , deleteRoom);
 router.put('/update/:roomId' , protect , updateRoom);
+
+module.exports = router;

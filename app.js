@@ -16,8 +16,9 @@ connectDB();
 const authRoutes = require("./routes/auth.js");
 const protect = require("./middleware/authMiddleware.js");
 // Later you will add:
-// const roomRoutes = require("./routes/roomRoutes");
-// const inviteRoutes = require("./routes/inviteRoutes");
+const roomRoutes = require('./routes/room.js');
+const inviteRoutes = require("./routes/invite.js");
+const locationRoutes = require("./routes/location.js")
 
 const app = express();
 
@@ -48,8 +49,9 @@ app.use(morgan("dev"));
 // 🔥 Routes
 // ----------------------
 app.use("/api/auth", authRoutes);
-// app.use("/api/rooms", roomRoutes);
-// app.use("/api/invites", inviteRoutes);
+app.use("/api/rooms", roomRoutes);
+app.use("/api/invites", inviteRoutes);
+app.use("/api/location" , locationRoutes);
 
 
 // ----------------------

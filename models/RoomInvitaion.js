@@ -2,27 +2,26 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const model = mongoose.model;
 
-const RoominvitationSchema = new Schema({
-    room : {
-        type : Schema.Types.ObjectId,
-        ref : 'Room',
-        required : true
+const RoomInvitationSchema = new Schema({
+    roomId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Room",
+        required: true,
     },
-    invitedUser : {
-        type : Schema.Types.ObjectId,
-        ref : 'User',
-        required : true
+    senderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
     },
-    invitedBy : {
-        type : Schema.Types.ObjectId,
-        ref : 'User',
-        required : true
+    receiverEmail: {
+        type: String,
+        required: true,
     },
-    status : {
-        type : String,
-        enum : ['pending' , 'accepted' , 'declined'],
-        default : 'pending'
+    status: {
+        type: String,
+        enum: ["pending", "accepted", "rejected"],
+        default: "pending",
     },
-},{timestamps : true});
+}, { timestamps: true });
 
-module.exports = model('RoomInvitation' , RoominvitationSchema);
+module.exports = model('RoomInvitation', RoomInvitationSchema);
