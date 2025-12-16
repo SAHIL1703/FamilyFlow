@@ -31,6 +31,10 @@ const RoomSchema = new Schema({
             ref: "Message"
         }
     ],
+    description : {
+        type : String,
+        trim : true,
+    }
 },{ timestamps: true });
 
 module.exports = model("Room", RoomSchema);
