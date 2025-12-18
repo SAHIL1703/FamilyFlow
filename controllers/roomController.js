@@ -1,31 +1,46 @@
 const mongoose = require("mongoose");
 const Room = require("./../models/Room.js");
+const User = require("../models/User.js");
 
 // ---------------------
 // CREATE ROOM
 // ---------------------
 exports.createRoom = async (req, res) => {
   try {
+    const userId = req.user.id;
     const { roomName } = req.body;
-    const createdBy = req.user.id;
 
-    if (!roomName || !roomName.trim()) {
-      return res.status(400).json({ success: false, message: "Room name is required" });
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
+    // ✅ PASS createdBy (THIS FIXES YOUR ERROR)
     const room = await Room.create({
-      roomName: roomName.trim(),
-      createdBy,
-      members: [createdBy]
+      roomName,
+      createdBy: userId,   // 🔥 REQUIRED FIELD
+      members: [userId],   // creator is a member
     });
 
-    return res.status(201).json({ success: true, room });
+    // ✅ Update ONLY roomCreated
+    if (!user.roomCreated.includes(room._id)) {
+      user.roomCreated.push(room._id);
+      await user.save();
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Room created successfully",
+      room,
+    });
 
   } catch (error) {
-    console.error("Create Room Error:", error);
-    res.status(500).json({ success: false, error: "Server Error" });
+    console.error(error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
+
+
 
 
 
@@ -122,4 +137,38 @@ exports.updateRoom = async (req, res) => {
     console.error("Update Room Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
+};
+
+
+//Get the Total Members from the Rooms you created and also you present
+exports.getDashboardStats = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const rooms = await Room.find({
+            $or: [
+                { createdBy: userId },
+                { members: userId }
+            ]
+        }).populate("members", "_id");
+
+        const memberSet = new Set();
+
+        rooms.forEach(room => {
+            room.members.forEach(member => {
+                if (member._id.toString() !== userId) {
+                    memberSet.add(member._id.toString());
+                }
+            });
+        });
+
+        res.status(200).json({
+            success: true,
+            totalMembers: memberSet.size,
+            totalRooms: rooms.length
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 };

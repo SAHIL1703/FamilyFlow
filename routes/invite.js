@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {sendInvitation , getMyInvitations , acceptInvitation , rejectInvitation} = require('../controllers/inviteController.js')
+const {sendInvitation , getMyInvitations , acceptInvitation , rejectInvitation, getSentPendingInvitations} = require('../controllers/inviteController.js')
 const protect = require('./../middleware/authMiddleware.js')
 
 //Send an invite
@@ -14,5 +14,8 @@ router.post('/accept/:invitationId' , protect , acceptInvitation);
 
 //Reject Invitation
 router.post("/reject/:invitationId", protect, rejectInvitation);
+
+//Get Pending Invitaion Count
+router.get("/sent/pending" , protect , getSentPendingInvitations)
 
 module.exports = router;
