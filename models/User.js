@@ -14,7 +14,7 @@ const UserSchema = new Schema({
         lowercase: true,
         match: [/^\S+@\S+\.\S+$/, "Invalid email format"]
     },
-    password:{
+    password: {
         type: String,
         required: true
     },
@@ -30,6 +30,11 @@ const UserSchema = new Schema({
             ref: 'Room'
         }
     ],
+    invitationMember: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+    }]
+    ,
     location: {
         latitude: {
             type: Number,
@@ -55,4 +60,4 @@ const UserSchema = new Schema({
     },
 });
 
-module.exports = mongoose.model("User" , UserSchema);
+module.exports = mongoose.model("User", UserSchema);

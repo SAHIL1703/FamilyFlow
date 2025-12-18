@@ -56,67 +56,82 @@ exports.getMyInvitations = async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 }
-
-exports.acceptInvitation = async(req,res)=>{
+exports.acceptInvitation = async (req, res) => {
     try {
         const invitationId = req.params.invitationId;
         const userId = req.user.id;
 
         const user = await User.findById(userId);
 
-        //Fetch the invitations
         const invitation = await RoomInvitaion.findById(invitationId);
-        if(!invitation){
-            return res.status(404).json({success : false , message : 'Invitation Not Found'})
+        if (!invitation) {
+            return res.status(404).json({ success: false, message: "Invitation Not Found" });
         }
 
-        //Only the recevier can accept
-        if(invitation.receiverEmail !== user.email){
+        // Only receiver can accept
+        if (invitation.receiverEmail !== user.email) {
             return res.status(403).json({ message: "You cannot accept this invitation" });
         }
 
-        //Update the invitation 
+        // Update invitation
         invitation.status = "accepted";
         await invitation.save();
 
-        //Add User to Room
+        // Add user to room
         const room = await Room.findById(invitation.roomId);
-        if(!room.members.includes(userId)){
+        if (!room.members.includes(userId)) {
             room.members.push(userId);
             await room.save();
         }
 
-        res.status(200).json({success : true , message : "Invitation Accepted" , room});
+        // ✅ UPDATE USER MODEL
+        if (!user.invitationMember.includes(invitation.senderId)) {
+            user.invitationMember.push(invitation.senderId);
+        }
+
+        // Optional but recommended
+        if (!user.roomsJoined.includes(room._id)) {
+            user.roomsJoined.push(room._id);
+        }
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Invitation Accepted",
+            room
+        });
 
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
-}
+};
+
 
 //Reject Inviatation
-exports.rejectInvitation = async(req,res)=>{
-    try{
+exports.rejectInvitation = async (req, res) => {
+    try {
         const invitationId = req.params.invitationId;
         const userId = req.user.id;
 
         const user = await User.findById(userId);
 
         const invitation = await RoomInvitaion.findById(invitationId);
-        if(!invitation){
-            return res.status(404).json({success : false , message : "Invitation Not Found"});
+        if (!invitation) {
+            return res.status(404).json({ success: false, message: "Invitation Not Found" });
         }
 
         //Only receiver can reject
-        if(invitation.receiverEmail !== user.email){
+        if (invitation.receiverEmail !== user.email) {
             return res.status(403).json({ message: "You cannot reject this invitation" });
         }
 
         invitation.status = "rejected";
         await invitation.save();
 
-        res.status(200).json({success : true , message : "Invitation Rejected" , invitation});
+        res.status(200).json({ success: true, message: "Invitation Rejected", invitation });
 
-    }catch(error){
+    } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 }
