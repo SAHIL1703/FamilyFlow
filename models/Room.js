@@ -19,12 +19,6 @@ const RoomSchema = new Schema({
             ref: 'User',
         }
     ],
-    presentUsers: [
-        {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-        }
-    ],
     chats: [
         {
             type: mongoose.Schema.Types.ObjectId,
