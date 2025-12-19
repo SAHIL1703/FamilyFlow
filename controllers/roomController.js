@@ -5,33 +5,75 @@ const User = require("../models/User.js");
 // ---------------------
 // CREATE ROOM
 // ---------------------
+// exports.createRoom = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+//     const { roomName ,description } = req.body;
+
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // ✅ PASS createdBy (THIS FIXES YOUR ERROR)
+//     const room = await Room.create({
+//       roomName,
+//       description,
+//       createdBy: userId,   // 🔥 REQUIRED FIELD
+//       members: [userId],   // creator is a member
+//     });
+
+//     // ✅ Update ONLY roomCreated
+//     if (!user.roomCreated.includes(room._id)) {
+//       user.roomCreated.push(room._id);
+//       await user.save();
+//     }
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Room created successfully",
+//       room,
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// };
+
 exports.createRoom = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { roomName } = req.body;
+    const { roomName, description } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // ✅ PASS createdBy (THIS FIXES YOUR ERROR)
+    // Create room
     const room = await Room.create({
       roomName,
-      createdBy: userId,   // 🔥 REQUIRED FIELD
-      members: [userId],   // creator is a member
+      description,
+      createdBy: userId,
+      members: [userId],
     });
 
-    // ✅ Update ONLY roomCreated
+    // Update user's created rooms
     if (!user.roomCreated.includes(room._id)) {
       user.roomCreated.push(room._id);
       await user.save();
     }
 
+    // 🔥 POPULATE createdBy & members BEFORE sending response
+    const populatedRoom = await Room.findById(room._id)
+      .populate("createdBy", "_id username email")
+      .populate("members", "_id username email");
+
     res.status(201).json({
       success: true,
       message: "Room created successfully",
-      room,
+      room: populatedRoom,
     });
 
   } catch (error) {
@@ -73,30 +115,59 @@ exports.deleteRoom = async (req, res) => {
     const { roomId } = req.params;
     const userId = req.user.id;
 
-    // Validate MongoDB ID
+    // 1️⃣ Validate Room ID
     if (!mongoose.Types.ObjectId.isValid(roomId)) {
-      return res.status(400).json({ success: false, message: "Invalid Room ID" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Room ID",
+      });
     }
 
+    // 2️⃣ Find Room
     const room = await Room.findById(roomId);
-
     if (!room) {
-      return res.status(404).json({ success: false, message: "Room not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Room not found",
+      });
     }
 
+    // 3️⃣ Authorization (only creator can delete)
     if (room.createdBy.toString() !== userId) {
-      return res.status(403).json({ success: false, message: "Unauthorized" });
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to delete this room",
+      });
     }
 
+    // 4️⃣ Remove roomId from creator's roomCreated
+    await User.findByIdAndUpdate(userId, {
+      $pull: { roomCreated: roomId },
+    });
+
+    // 5️⃣ Remove roomId from all members' roomsJoined
+    await User.updateMany(
+      { _id: { $in: room.members } },
+      { $pull: { roomsJoined: roomId } }
+    );
+
+    // 6️⃣ Delete the room
     await Room.findByIdAndDelete(roomId);
 
-    return res.status(200).json({ success: true, message: "Room deleted successfully" });
+    return res.status(200).json({
+      success: true,
+      message: "Room deleted successfully",
+    });
 
   } catch (error) {
     console.error("Delete Room Error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
+
 
 
 
