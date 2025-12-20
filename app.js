@@ -19,6 +19,7 @@ const protect = require("./middleware/authMiddleware.js");
 const roomRoutes = require('./routes/room.js');
 const inviteRoutes = require("./routes/invite.js");
 const locationRoutes = require("./routes/location.js")
+const messageRoutes = require("./routes/message.js")
 
 const app = express();
 
@@ -52,7 +53,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/invites", inviteRoutes);
 app.use("/api/location" , locationRoutes);
-
+app.use("/api/messages" , messageRoutes);
 
 // ----------------------
 // 🔥 Test Route
