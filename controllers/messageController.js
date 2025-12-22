@@ -4,35 +4,27 @@ const Room = require("../models/Room");
 exports.sendMessage = async (req, res) => {
   try {
     const { text } = req.body;
-    const { roomId } = req.params; // This is coming from /api/messages/:roomId
+    const { roomId } = req.params;
     const userId = req.user.id;
 
-    if (!text) {
-      return res.status(400).json({
-        success: false,
-        message: "Message text is required",
-      });
-    }
+    if (!text) return res.status(400).json({ success: false, message: "Required" });
 
-    // 1. Create message WITH the room ID
+    // 1. Create message
     const message = await Message.create({
       text,
       createdBy: userId,
-      room: roomId, // <--- ADD THIS LINE TO FIX THE ERROR
+      room: roomId,
     });
 
-    // 2. Push message into room's chat array
-    await Room.findByIdAndUpdate(
-      roomId,
-      { $push: { chats: message._id } },
-      { new: true }
-    );
+    // 2. Update Room
+    await Room.findByIdAndUpdate(roomId, { $push: { chats: message._id } });
 
-    // 3. Populate sender details for the frontend
-    const populatedMessage = await message.populate(
-      "createdBy",
-      "username email"
-    );
+    // 3. Populate
+    const populatedMessage = await message.populate("createdBy", "username email");
+
+    // 4. 🔥 LIVE EMIT: Get 'io' instance and send to the specific room
+    const io = req.app.get("io");
+    io.to(roomId).emit("receive_message", populatedMessage);
 
     res.status(201).json({
       success: true,
@@ -40,10 +32,7 @@ exports.sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error("Send Message Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    res.status(500).json({ success: false, message: "Error" });
   }
 };
 
