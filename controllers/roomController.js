@@ -2,45 +2,6 @@ const mongoose = require("mongoose");
 const Room = require("./../models/Room.js");
 const User = require("../models/User.js");
 
-// ---------------------
-// CREATE ROOM
-// ---------------------
-// exports.createRoom = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const { roomName ,description } = req.body;
-
-//     const user = await User.findById(userId);
-//     if (!user) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     // ✅ PASS createdBy (THIS FIXES YOUR ERROR)
-//     const room = await Room.create({
-//       roomName,
-//       description,
-//       createdBy: userId,   // 🔥 REQUIRED FIELD
-//       members: [userId],   // creator is a member
-//     });
-
-//     // ✅ Update ONLY roomCreated
-//     if (!user.roomCreated.includes(room._id)) {
-//       user.roomCreated.push(room._id);
-//       await user.save();
-//     }
-
-//     res.status(201).json({
-//       success: true,
-//       message: "Room created successfully",
-//       room,
-//     });
-
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ success: false, error: error.message });
-//   }
-// };
-
 exports.createRoom = async (req, res) => {
   try {
     const userId = req.user.id;

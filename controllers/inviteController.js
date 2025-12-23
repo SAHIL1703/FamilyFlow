@@ -2,40 +2,6 @@ const Room = require("../models/Room.js");
 const RoomInvitaion = require("../models/RoomInvitaion.js");
 const User = require("../models/User.js");
 
-// exports.sendInvitation = async (req, res) => {
-//     try {
-//         const { roomId, receiverEmail } = req.body;
-//         const senderId = req.user.id;
-
-//         if (!roomId || !receiverEmail) {
-//             return res.status(400).json({ success: false, message: "Room ID and Receiver Email are required" });
-//         }
-
-//         //Check if Room Exists
-//         const room = await Room.findById(roomId);
-//         if (!room) {
-//             return res.status(404).json({ success: false, message: "Room not found" });
-//         }
-
-//         
-
-//         //Only Creator Can send Invitations
-//         if (room.createdBy.toString() !== senderId) {
-//             return res.status(403).json({ success: false, message: "Only Room Creator can send invitations" });
-//         }
-
-//         //Create Invitation
-//         const invitation = await RoomInvitaion.create({
-//             roomId,
-//             senderId,
-//             receiverEmail
-//         })
-//         res.status(201).json({ success: true, message: "Invitation Sent", invitation });
-//     } catch (error) {
-//         console.error("Invite Room Error:", error);
-//         res.status(500).json({ success: false, error: error.message });
-//     }
-// }
 exports.sendInvitation = async (req, res) => {
     try {
         const { roomId, receiverEmail } = req.body;
