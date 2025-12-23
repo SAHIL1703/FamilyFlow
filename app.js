@@ -182,6 +182,11 @@ app.use("/api/invites", inviteRoutes);
 app.use("/api/location", locationRoutes);
 app.use("/api/messages", messageRoutes);
 
+app.get("/" , (req,res)=>{
+    console.log("Welcome to Server");
+    res.send("Welcome to Server")
+})
+
 // Error Handling Middleware
 app.use((err, req, res, next) => {
     const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
