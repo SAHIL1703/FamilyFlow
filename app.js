@@ -25,11 +25,19 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.io with optimized CORS
+// Define Allowed Origins (Used for both Express and Socket.io)
+const allowedOrigins = [
+    "https://family-flow-pied.vercel.app", // Production Frontend
+    "http://localhost:5173",               // Local Development (Vite)
+    "http://localhost:3000"                // Local Development (Alternative)
+];
+
+// Initialize Socket.io with Correct CORS
 const io = new Server(server, {
     cors: {
-        origin: "*", // In production, replace with your frontend URL
-        methods: ["GET", "POST"]
+        origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
@@ -40,7 +48,14 @@ app.set("io", io);
 app.use(helmet({
     contentSecurityPolicy: false, // Set to false if using external CDNs like Leaflet
 }));
-app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] }));
+
+// Express CORS Middleware (Fixes the Login Error)
+app.use(cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true // Important for secure cookies/sessions
+}));
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
