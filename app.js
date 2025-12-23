@@ -53,100 +53,126 @@ app.use(morgan("dev"));
 io.on("connection", (socket) => {
     console.log("⚡ New Client Connected:", socket.id);
 
-    // 1. Handling Room Entry
-    socket.on("join_room", (data) => {
-        // Handle both object {roomId} or string roomId for flexibility
-        const roomId = typeof data === 'string' ? data : data.roomId;
-        socket.join(roomId);
-        console.log(`👤 User joined room: ${roomId}`);
+    // 1. SETUP: Handling Room Entry & Online Status
+    socket.on("setup_socket", async (userId) => {
+        if (!userId) return;
+
+        // Save userId to the socket object for disconnect handling
+        socket.userId = userId;
+
+        try {
+            // Update User to Online
+            const user = await User.findByIdAndUpdate(userId, { 
+                isOnline: true 
+            }, { new: true }).populate('roomsJoined').populate('roomCreated');
+
+            if (!user) return;
+
+            // Collect all Room IDs
+            const allRoomIds = [
+                ...user.roomsJoined.map(r => r._id.toString()),
+                ...user.roomCreated.map(r => r._id.toString())
+            ];
+            
+            // Remove duplicates
+            const uniqueRooms = [...new Set(allRoomIds)];
+
+            // Socket joins all rooms
+            socket.join(uniqueRooms);
+            console.log(`👤 User ${user.username} joined ${uniqueRooms.length} rooms`);
+
+            // Broadcast "Online" status to all these rooms
+            uniqueRooms.forEach(roomId => {
+                socket.to(roomId).emit("user_status_change", {
+                    userId: userId,
+                    status: "online"
+                });
+            });
+
+        } catch (error) {
+            console.error("Socket Setup Error:", error);
+        }
     });
 
     // 2. Real-Time Location Updates
     socket.on("send_location", async (data) => {
-        const { userId, roomId, latitude, longitude } = data;
-
-        if (!userId || !roomId) return;
+        const { userId, latitude, longitude } = data;
+        if (!userId || !latitude || !longitude) return;
 
         try {
-            // Update Location Collection (Room specific)
-            const updatedLocation = await Location.findOneAndUpdate(
-                { userId, roomId },
-                { latitude, longitude, updatedAt: Date.now() },
-                { upsert: true, new: true }
-            );
+            // A. Update User Profile (Global "Last Known")
+            const user = await User.findByIdAndUpdate(userId, {
+                location: { latitude, longitude, lastUpdated: Date.now() },
+                isOnline: true
+            }, { new: true }).populate('roomsJoined').populate('roomCreated');
 
-            // Update User Profile (Last known global position)
-            await User.findByIdAndUpdate(userId, {
-                location: {
+            if (!user) return;
+
+            // B. Get Rooms to broadcast to
+            const allRoomIds = [
+                ...user.roomsJoined.map(r => r._id.toString()),
+                ...user.roomCreated.map(r => r._id.toString())
+            ];
+            const uniqueRooms = [...new Set(allRoomIds)];
+
+            // C. Update specific Location tables & Broadcast
+            uniqueRooms.forEach(async (roomId) => {
+                // Save to Location History
+                await Location.findOneAndUpdate(
+                    { userId, roomId },
+                    { latitude, longitude, updatedAt: Date.now() },
+                    { upsert: true, new: true }
+                );
+
+                // Broadcast new coordinates
+                socket.to(roomId).emit("receive_location", {
+                    userId,
                     latitude,
                     longitude,
-                    lastUpdated: Date.now()
-                },
-                isOnline: true
-            });
-
-            // Broadcast to everyone else in the room
-            socket.to(roomId).emit("receive_location", {
-                userId,
-                latitude,
-                longitude,
-                updatedAt: updatedLocation.updatedAt
+                    updatedAt: Date.now()
+                });
             });
 
         } catch (error) {
-            console.error("Socket Location Error:", error);
+            console.error("Global Tracking Error:", error);
         }
     });
 
-    // 3. User Disconnection
-    socket.on("disconnect", () => {
+    // 3. User Disconnection (Window Closed)
+    socket.on("disconnect", async () => {
         console.log("❌ User disconnected:", socket.id);
+
+        // If we know who this socket was
+        if (socket.userId) {
+            try {
+                // Mark as offline in DB
+                const user = await User.findByIdAndUpdate(
+                    socket.userId, 
+                    { isOnline: false, lastSeen: Date.now() },
+                    { new: true }
+                ).populate('roomsJoined').populate('roomCreated');
+
+                if (user) {
+                    const allRoomIds = [
+                        ...user.roomsJoined.map(r => r._id.toString()),
+                        ...user.roomCreated.map(r => r._id.toString())
+                    ];
+                    const uniqueRooms = [...new Set(allRoomIds)];
+
+                    // Tell everyone: "This user is now Offline"
+                    uniqueRooms.forEach(roomId => {
+                        socket.to(roomId).emit("user_status_change", {
+                            userId: socket.userId,
+                            status: "offline",
+                            lastSeen: Date.now()
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error("Disconnect Error:", err);
+            }
+        }
     });
-
-    socket.on("send_location", async (data) => {
-    const { userId, latitude, longitude } = data;
-    if (!userId) return;
-
-    try {
-        // 1. Find the user and their rooms
-        const user = await User.findById(userId).populate('roomsJoined');
-        if (!user) return;
-
-        // 2. Update User document last known location
-        user.location = { latitude, longitude, lastUpdated: Date.now() };
-        user.isOnline = true;
-        await user.save();
-
-        // 3. Loop through all rooms the user is in and broadcast
-        const allRoomIds = [
-            ...user.roomsJoined.map(r => r._id.toString()),
-            ...user.roomCreated.map(r => r._id.toString())
-        ];
-
-        // Remove duplicates
-        const uniqueRooms = [...new Set(allRoomIds)];
-
-        uniqueRooms.forEach(roomId => {
-            // Update the specific Location collection for history/persistence
-            Location.findOneAndUpdate(
-                { userId, roomId },
-                { latitude, longitude, updatedAt: Date.now() },
-                { upsert: true }
-            ).exec(); // Fire and forget
-
-            // Broadcast to the room
-            socket.to(roomId).emit("receive_location", {
-                userId,
-                latitude,
-                longitude,
-                updatedAt: Date.now()
-            });
-        });
-
-    } catch (error) {
-        console.error("Global Tracking Error:", error);
-    }
-});
 });
 
 // API Routes
