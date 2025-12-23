@@ -251,12 +251,14 @@ const server = http.createServer(app);
 // 🔒 CORS CONFIGURATION (THE FIX)
 // =======================================================================
 const allowedOrigins = [
-    "https://family-flow-pied.vercel.app", // 1. Production Frontend (Vercel)
-    "http://localhost:5173",               // 2. Local Development (Vite)
-    "http://localhost:3000",               // 3. Local Development (Backend/Postman)
-    "http://192.168.1.5:5173",             // 4. Local Network Testing (Optional)
-    "http://localhost",                    // 5. 🟢 ANDROID APP (Capacitor Internal Webview)
-    "capacitor://localhost"                // 6. 🔵 iOS APP (Capacitor Internal Webview)
+    "https://family-flow-pied.vercel.app",   // Production Frontend
+    "http://localhost:5173",                 // Local Dev
+    "http://localhost:3000",                 // Local Backend
+    
+    // 👇 THIS IS THE MISSING PART CAUSING YOUR ERROR
+    "https://localhost",                     // 🟢 Android App (HTTPS)
+    "http://localhost",                      // 🟢 Android App (HTTP - backup)
+    "capacitor://localhost"                  // 🔵 iOS App
 ];
 
 const corsOptions = {
