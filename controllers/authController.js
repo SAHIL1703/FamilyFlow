@@ -51,3 +51,38 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Link Device to User
+exports.linkDevice = async (req, res) => {
+  try {
+    const { macAddress } = req.body;
+    
+    // 🔥 THE FIX: Safely grab the ID whether your middleware uses _id or userId
+    const targetUserId = req.user._id || req.user.userId;
+
+    if (!targetUserId) {
+        return res.status(400).json({ error: "Could not identify user from token." });
+    }
+
+    const user = await User.findByIdAndUpdate(
+        targetUserId, 
+        { deviceMac: macAddress }, 
+        { new: true }
+    );
+
+    // 🔥 NEW: Check if the user was actually found and updated
+    if (!user) {
+        return res.status(404).json({ error: "User not found in database." });
+    }
+
+    console.log(`✅ Successfully linked MAC ${macAddress} to user ${user.username}`);
+
+    res.status(200).json({ message: "Device linked successfully!", user });
+  } catch (error) {
+    if (error.code === 11000) {
+        return res.status(400).json({ error: "This device is already linked to another account." });
+    }
+    console.error("Link Device Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
