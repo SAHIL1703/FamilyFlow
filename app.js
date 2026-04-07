@@ -42,7 +42,9 @@ const allowedOrigins = [
     "http://localhost",                      // 🟢 Android App (HTTP - backup)
     "capacitor://localhost",                 // 🔵 iOS App
     "http://127.0.0.1:5500",                 // VS Code Live Server (IP)
-    "http://localhost:5500"                  // VS Code Live Server (Localhost)
+    "http://localhost:5500",
+    "http://127.0.0.1:5504",                 // VS Code Live Server (IP)
+    "http://localhost:5504",
 ];
 
 const corsOptions = {
@@ -191,16 +193,29 @@ io.on("connection", (socket) => {
             const uniqueRooms = [...new Set(allRoomIds)];
 
             // D. Broadcast the emergency ONLY to this user's rooms!
+            const alertPayload = { 
+                type: "SCREAM",
+                message: `Emergency! Scream detected at ${user.username}'s device!`,
+                timestamp: data.timestamp,
+                userId: user._id.toString()
+            };
+
             if (uniqueRooms.length > 0) {
+                let totalSocketsInRooms = 0;
                 uniqueRooms.forEach(roomId => {
-                    socket.to(roomId).emit("emergency_alert", {
-                        type: "SCREAM",
-                        message: `Emergency! Scream detected at ${user.username}'s device!`,
-                        timestamp: data.timestamp,
-                        userId: user._id
-                    });
+                    const roomSockets = io.sockets.adapter.rooms.get(roomId);
+                    const count = roomSockets ? roomSockets.size : 0;
+                    totalSocketsInRooms += count;
+                    console.log(`🔍 Room ${roomId} has ${count} socket(s):`, roomSockets ? [...roomSockets] : []);
+                    io.to(roomId).emit("emergency_alert", alertPayload);
                 });
-                console.log(`📡 Alert sent to ${uniqueRooms.length} rooms.`);
+                console.log(`📡 Alert sent to ${uniqueRooms.length} rooms (${totalSocketsInRooms} total sockets).`);
+
+                // 🚨 FALLBACK: If no sockets in rooms, broadcast to ALL connected sockets
+                if (totalSocketsInRooms === 0) {
+                    console.warn("⚠️ No sockets in rooms! Broadcasting to ALL connected sockets.");
+                    io.emit("emergency_alert", alertPayload);
+                }
             } else {
                 console.log("User has no rooms. No one to alert.");
             }
